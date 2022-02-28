@@ -1,0 +1,23 @@
+{
+  "name": "@recordreplay/jest",
+  "version": "0.1.2",
+  "description": "CLI wrapper for recording jest tests",
+  "bin": {
+    "replay-jest": "bin/replay-jest"
+  },
+  "main": "src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RecordReplay/jest.git"
+  },
+  "author": "",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/RecordReplay/jest/issues"
+  },
+  "homepage": "https://github.com/RecordReplay/jest#readme",
+  "dependencies": {}
+}
