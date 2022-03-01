@@ -33,3 +33,15 @@ replay-jest $TestPath: Creating recording...
 replay-jest $TestPath: Uploading and processing recording...
 replay-jest $TestPath recording: https://app.replay.io/recording/$RecordingId
 ```
+
+By default, recordings will only be created for failing tests, and at most 10 recordings will be created in one test run.
+
+To override this default behavior, a configuration JSON object can be specified with additional options. This can be specified either via the value of the `RECORD_REPLAY_JEST_CONFIGURATION` environment variable, or in a file referenced by the `RECORD_REPLAY_JEST_CONFIGURATION_FILE` environment variable.
+
+Configuration objects can have the following properties:
+
+* `maxRecordings`: A number overriding the maximum number of recordings which can be created in one test run.
+
+* `recordAll`: Set to record all tests, up to the maximum number of recordings allowed.
+
+* `randomize`: Set to randomize which tests will be selected to record if there are more than the maximum number allowed. This is useful to improve coverage in CI environments when there are many tests which could be recorded.

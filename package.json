@@ -1,6 +1,6 @@
 {
   "name": "@recordreplay/jest",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "CLI wrapper for recording jest tests",
   "bin": {
     "replay-jest": "bin/replay-jest"
@@ -21,6 +21,7 @@
   "homepage": "https://github.com/RecordReplay/jest#readme",
   "dependencies": {
     "@recordreplay/recordings-cli": "^0.10.0",
-    "@recordreplay/replay-node-cli": "^0.1.6"
+    "@recordreplay/replay-node-cli": "^0.1.6",
+    "lodash": "^4.17.21"
   }
 }
