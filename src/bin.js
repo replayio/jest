@@ -1,7 +1,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const { removeColors, waitForProcessExit, findExecutablePath } = require("./utils");
 const { listAllRecordings, uploadRecording, processRecording } = require("@recordreplay/recordings-cli");
 
@@ -69,13 +69,19 @@ async function replayTest(testPath, recordingsDir, processingPromises) {
     logMessage("failed", why);
   }
 
+  // Make sure the replay version of node is installed and updated.
   const replayNodePath = findExecutablePath("replay-node");
   if (!replayNodePath) {
     logFailure(`replay-node not installed, try "npm i replay-node -g"`);
     return;
   }
+  spawnSync(replayNodePath, ["--update"]);
 
-  const jestPath = findExecutablePath("jest");
+  // Directory where replay-node will install the node binary.
+  const baseReplayDirectory = process.env.RECORD_REPLAY_DIRECTORY || path.join(process.env.HOME, ".replay");
+  const replayNodeBinaryPath = path.join(baseReplayDirectory, "node", "node");
+
+  const jestPath = findJestPath();
   if (!jestPath) {
     logFailure(`Could not find jest path`);
     return;
@@ -90,7 +96,7 @@ async function replayTest(testPath, recordingsDir, processingPromises) {
   const recordingOptions = { directory: recordingsDir, apiKey };
 
   const replayProcess = spawn(
-    replayNodePath,
+    replayNodeBinaryPath,
     [jestPath, testPath],
     {
       stdio: "pipe",
@@ -116,6 +122,9 @@ async function replayTest(testPath, recordingsDir, processingPromises) {
   const failures = getTestFailures(output);
   if (!failures.length) {
     logFailure(`Recording process did not have test failures`);
+    console.log("Recording process output:");
+    console.log(`${replayNodeBinaryPath} ${jestPath} ${testPath}`);
+    process.stdout.write(output);
     return;
   }
 
@@ -137,4 +146,11 @@ async function replayTest(testPath, recordingsDir, processingPromises) {
     }
     logMessage("recording", `https://app.replay.io/recording/${recordingId}`);
   })());
+}
+
+function findJestPath() {
+  try {
+    return require.resolve("jest/bin/jest");
+  } catch (e) {}
+  return findExecutablePath("jest");
 }

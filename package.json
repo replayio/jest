@@ -1,6 +1,6 @@
 {
   "name": "@recordreplay/jest",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CLI wrapper for recording jest tests",
   "bin": {
     "replay-jest": "bin/replay-jest"
