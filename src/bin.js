@@ -4,6 +4,7 @@ const path = require("path");
 const { spawn, spawnSync } = require("child_process");
 const { removeColors, waitForProcessExit, findExecutablePath } = require("./utils");
 const { listAllRecordings, uploadRecording, processRecording } = require("@recordreplay/recordings-cli");
+const _ = require('lodash');
 
 main();
 
@@ -24,14 +25,23 @@ async function main() {
 
   const { code, signal } = await waitForProcessExit(jestProcess);
 
-  const failures = getTestFailures(output);
+  const configuration = loadConfiguration();
+  const availableTests = getTestsForRecording(configuration, output);
+
+  // Limit on how many recordings we can create.
+  const maxRecordings = configuration.maxRecordings || 10;
+
+  if (availableTests.length > maxRecordings) {
+    console.log(`Too many tests to record: ${availableTests.length}, limit is ${maxRecordings}`);
+    availableTests.length = maxRecordings;
+  }
 
   const recordingDirectories = [];
   const processingPromises = [];
-  for (const failure of failures) {
+  for (const test of availableTests) {
     const dir = makeRecordingsDirectory();
     recordingDirectories.push(dir);
-    await replayTest(failure, dir, processingPromises);
+    await replayTest(configuration, test, dir, processingPromises);
   }
   await Promise.all(processingPromises);
 
@@ -40,16 +50,23 @@ async function main() {
   process.exit(code || (signal ? 1 : 0));
 }
 
-function getTestFailures(output) {
+function getTestsForRecording(configuration, output) {
   const lines = removeColors(output).split("\n");
-  const failures = new Set();
+  const tests = new Set();
   for (const line of lines) {
-    const match = /^\s*FAIL\s+(.*)/.exec(line);
+    let match = /^\s*FAIL\s+(.*)/.exec(line);
     if (match) {
-      failures.add(match[1]);
+      tests.add(match[1]);
+    }
+    if (configuration.recordAll) {
+      match = /^\s*PASS\s+(.*)/.exec(line);
+      if (match) {
+        tests.add(match[1]);
+      }
     }
   }
-  return [...failures];
+  const rv = [...tests];
+  return configuration.randomize ? _.shuffle(rv) : rv;
 }
 
 function makeRecordingsDirectory() {
@@ -58,7 +75,7 @@ function makeRecordingsDirectory() {
   return dir;
 }
 
-async function replayTest(testPath, recordingsDir, processingPromises) {
+async function replayTest(configuration, testPath, recordingsDir, processingPromises) {
   function logMessage(prefix, msg) {
     console.log(`replay-jest ${testPath}${prefix ? " " + prefix : ""}: ${msg}`);
   }
@@ -119,9 +136,13 @@ async function replayTest(testPath, recordingsDir, processingPromises) {
 
   await waitForProcessExit(replayProcess);
 
-  const failures = getTestFailures(output);
-  if (!failures.length) {
-    logFailure(`Recording process did not have test failures`);
+  const availableTests = getTestsForRecording(configuration, output);
+  if (!availableTests.length) {
+    if (configuration.recordAll) {
+      logFailure(`No tests ran while recording`);
+    } else {
+      logFailure(`Recording process did not have test failures`);
+    }
     console.log("Recording process output:");
     console.log(`${replayNodeBinaryPath} ${jestPath} ${testPath}`);
     process.stdout.write(output);
@@ -153,4 +174,26 @@ function findJestPath() {
     return require.resolve("jest/bin/jest");
   } catch (e) {}
   return findExecutablePath("jest");
+}
+
+function loadConfiguration() {
+  let configurationStr = process.env.RECORD_REPLAY_JEST_CONFIGURATION;
+  if (!configurationStr) {
+    const configurationFile = process.env.RECORD_REPLAY_JEST_CONFIGURATION_FILE;
+    if (configurationFile) {
+      try {
+        configurationStr = fs.readFileSync(configurationFile, "utf8");
+      } catch (e) {
+        console.log(`Error: Exception reading record/replay configuration file: ${e}`);
+      }
+    }
+  }
+  if (configurationStr) {
+    try {
+      return JSON.parse(configurationStr);
+    } catch (e) {
+      console.log(`Error: Exception parsing record/replay configuration: ${e}`);
+    }
+  }
+  return {};
 }
