@@ -89,7 +89,7 @@ async function replayTest(configuration, testPath, recordingsDir, processingProm
   // Make sure the replay version of node is installed and updated.
   const replayNodePath = findExecutablePath("replay-node");
   if (!replayNodePath) {
-    logFailure(`replay-node not installed, try "npm i replay-node -g"`);
+    logFailure(`replay-node not available, try "npm i @recordreplay/replay-node-cli -g"`);
     return;
   }
   spawnSync(replayNodePath, ["--update"]);
